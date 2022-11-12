@@ -9,3 +9,5 @@ edition = "2021"
 actix = "0.13"
 actix-web = "4"
 actix-web-actors = "4"
+ciborium = "0.2"
+serde = { version = "1", features = ["derive"] }

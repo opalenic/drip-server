@@ -2,6 +2,20 @@ use actix_web::{get, post, web, App, Error, HttpRequest, HttpResponse, HttpServe
 use actix_web_actors::ws;
 use actix::{Actor, StreamHandler};
 
+use ciborium::{de, ser};
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+enum OutgoingMsg {
+    TypeA(u16),
+    TypeB(u32),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct IncomingMsg(u8);
+
+
 #[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -30,7 +44,19 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for DripNodeWs {
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
             Ok(ws::Message::Text(text)) => ctx.text(text),
-            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            Ok(ws::Message::Binary(bin)) => {
+                let deserialized: OutgoingMsg = de::from_reader(&*bin).unwrap();
+                println!("Deserialized this: {deserialized:?}, raw {bin:?}");
+                let val = match deserialized {
+                    OutgoingMsg::TypeA(v) => v as u8,
+                    OutgoingMsg::TypeB(v) => v as u8
+                };
+
+                let mut serialized = Vec::new();
+                ser::into_writer(&IncomingMsg(val), &mut serialized);
+
+                ctx.binary(serialized)
+            },
             _ => (),
         }
     }
